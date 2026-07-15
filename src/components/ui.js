@@ -32,25 +32,36 @@ export function Meter({ value, tone = "brand", max = 100 }) {
   );
 }
 
-// Big grade ring used on each opportunity card
-const RING_COLOR = { emerald: "#059669", sky: "#0284c7", amber: "#d97706", rose: "#e11d48" };
-export function GradeRing({ score, tone = "emerald", letter, size = 64 }) {
+// Big grade ring used on each opportunity card — shows the score inside a tinted disk
+const RING_COLOR = {
+  emerald: { c: "#059669", bg: "#ecfdf5" },
+  sky: { c: "#0284c7", bg: "#f0f9ff" },
+  amber: { c: "#d97706", bg: "#fffbeb" },
+  rose: { c: "#e11d48", bg: "#fff1f2" },
+};
+export function GradeRing({ score, tone = "emerald", letter, size = 72 }) {
   const pct = Math.max(0, Math.min(100, score));
-  const stroke = 6;
+  const stroke = 7;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const off = c - (pct / 100) * c;
-  const color = RING_COLOR[tone] || RING_COLOR.emerald;
+  const { c: color, bg } = RING_COLOR[tone] || RING_COLOR.emerald;
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r - 1} fill={bg} />
         <circle cx={size / 2} cy={size / 2} r={r} stroke="#eef0f5" strokeWidth={stroke} fill="none" />
         <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none"
           strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round"
           style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(0.22,1,0.36,1)" }} />
       </svg>
-      <div className="absolute inset-0 grid place-items-center">
-        <span className="text-lg font-extrabold" style={{ color }}>{letter}</span>
+      <div className="absolute inset-0 grid place-items-center leading-none">
+        <div className="text-center">
+          <div className="text-[20px] font-extrabold" style={{ color }}>{score}</div>
+          <div className="text-[9px] font-semibold tracking-wider mt-0.5" style={{ color }}>
+            GRADE {letter}
+          </div>
+        </div>
       </div>
     </div>
   );

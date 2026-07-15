@@ -400,9 +400,12 @@ function Results({ data, onReset }) {
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
             {summary.found} product {summary.found === 1 ? "opportunity" : "opportunities"} for you
           </h1>
-          <p className="text-slate-500 text-sm mt-1.5">
-            {catLabel} · {marketLabel} · {summary.worthTesting} worth testing · avg. margin {summary.avgMargin}%
-          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            <StatPill icon="🗂️" label={catLabel} />
+            <StatPill icon={MARKETS.find((m) => m.id === query.market)?.emoji || "🌍"} label={marketLabel} />
+            <StatPill icon="✅" label={`${summary.worthTesting} worth testing`} tone="emerald" />
+            <StatPill icon="💰" label={`${summary.avgMargin}% avg. margin`} tone="brand" />
+          </div>
         </div>
         <button onClick={onReset} className="focus-ring shrink-0 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
@@ -441,71 +444,85 @@ function Results({ data, onReset }) {
 
 /* ------------------------------------------------------------ Opportunity */
 const WORD_COLOR = { good: "text-emerald-600", ok: "text-amber-600", bad: "text-rose-500" };
+const RAIL = { emerald: "#34d399", sky: "#38bdf8", amber: "#fbbf24", rose: "#fb7185" };
+const METRIC_ICON = { demand: "📈", competition: "⚔️", margin: "💰", risk: "🛡️" };
 
 function OpportunityCard({ p, rank }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="card card-hover overflow-hidden rise-in" style={{ animationDelay: `${rank * 60}ms` }}>
-      <div className="p-5 sm:p-6">
-        {/* Header */}
-        <div className="flex items-start gap-4">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="relative">
-              <div className="grid place-items-center w-12 h-12 rounded-xl bg-slate-50 border hairline text-2xl">{p.image}</div>
-              <span className={`absolute -top-2 -left-2 grid place-items-center w-6 h-6 rounded-full text-[11px] font-bold shadow ring-2 ring-white ${rankBadge(rank)}`}>{rank}</span>
-            </div>
-            <div className="min-w-0">
-              <h3 className="font-bold text-slate-900 leading-snug truncate">{p.name}</h3>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className="text-[12px] text-slate-500">{p.niche}</span>
-                <span className="text-slate-300">·</span>
-                <span className="text-[12px] text-slate-400">Spotted on {p.sources.slice(0, 3).join(", ")}</span>
+    <div className="card card-hover overflow-hidden rise-in flex" style={{ animationDelay: `${rank * 60}ms` }}>
+      <div className="w-1.5 shrink-0" style={{ background: RAIL[p.grade.tone] || RAIL.sky }} />
+      <div className="flex-1 min-w-0">
+        <div className="p-5 sm:p-6">
+          {/* Header */}
+          <div className="flex items-start gap-4">
+            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+              <div className="relative shrink-0">
+                <div className="grid place-items-center w-12 h-12 rounded-xl bg-slate-50 border hairline text-2xl">{p.image}</div>
+                <span className={`absolute -top-2 -left-2 grid place-items-center w-6 h-6 rounded-full text-[11px] font-bold shadow ring-2 ring-white ${rankBadge(rank)}`}>{rank}</span>
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-slate-900 leading-snug truncate">{p.name}</h3>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="inline-flex items-center text-[11px] font-medium text-slate-600 bg-slate-100 rounded-md px-2 py-0.5">{p.niche}</span>
+                  <span className="inline-flex items-center gap-1 text-[11.5px] text-slate-400">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+                    {p.sources.slice(0, 3).join(", ")}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-right hidden sm:block">
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <GradeRing score={p.total} tone={p.grade.tone} letter={p.grade.letter} />
               <Badge tone={p.grade.tone}>{p.grade.label}</Badge>
-              <div className="text-[11px] text-slate-400 mt-1">Score {p.total}/100</div>
             </div>
-            <GradeRing score={p.total} tone={p.grade.tone} letter={p.grade.letter} />
           </div>
-        </div>
 
-        {/* Headline */}
-        <p className="text-[14px] text-slate-600 mt-4 leading-relaxed">{p.headline}</p>
+          {/* Headline callout */}
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100 px-3.5 py-2.5">
+            <span className="mt-0.5">💡</span>
+            <p className="text-[13.5px] text-slate-700 leading-relaxed">{p.headline}</p>
+          </div>
 
-        {/* Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-          {p.metrics.map((m) => (
-            <div key={m.key} className="rounded-xl border hairline bg-slate-50/50 p-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] text-slate-500">{m.label}</span>
+          {/* Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+            {p.metrics.map((m) => (
+              <div key={m.key} className="rounded-xl border hairline bg-white p-3.5">
+                <div className="flex items-center gap-1.5 text-[12px] text-slate-500">
+                  <span className="text-[13px]">{METRIC_ICON[m.key]}</span>
+                  {m.label}
+                </div>
+                <div className="flex items-baseline justify-between mt-1.5">
+                  <span className={`text-[15px] font-bold ${WORD_COLOR[m.tone]}`}>{m.word}</span>
+                  <span className="text-[11px] text-slate-300 tabular-nums font-semibold">{m.score}</span>
+                </div>
+                <div className="mt-2.5"><Meter value={m.score} tone={m.tone} /></div>
               </div>
-              <div className={`text-sm font-bold mt-0.5 ${WORD_COLOR[m.tone]}`}>{m.word}</div>
-              <div className="mt-2"><Meter value={m.score} tone={m.tone} /></div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Key numbers strip */}
+          <div className="mt-5 rounded-xl border hairline bg-slate-50/70 px-4 py-3 flex flex-wrap items-center gap-y-3">
+            <KeyNum label="Profit / sale" value={`$${p.stats.unitProfit}`} strong />
+            <Sep />
+            <KeyNum label="Margin" value={`${p.stats.marginPct}%`} />
+            <Sep />
+            <KeyNum label="Sell price" value={`$${p.stats.price}`} />
+            <Sep />
+            <KeyNum label="Monthly searches" value={p.stats.searches} />
+            <Sep />
+            <KeyNum label="Competitors" value={`~${p.stats.competitors}`} />
+          </div>
+
+          {/* Expand */}
+          <button onClick={() => setOpen((o) => !o)} className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-indigo-600 hover:text-indigo-700">
+            {open ? "Hide the details" : "Why we ranked it here"}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className={`transition-transform ${open ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
+          </button>
         </div>
 
-        {/* Key numbers */}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-5 text-sm">
-          <KeyNum label="Profit / sale" value={`$${p.stats.unitProfit}`} strong />
-          <KeyNum label="Margin" value={`${p.stats.marginPct}%`} />
-          <KeyNum label="Sell price" value={`$${p.stats.price}`} />
-          <KeyNum label="Monthly searches" value={p.stats.searches} />
-          <KeyNum label="Competitors" value={`~${p.stats.competitors}`} />
-        </div>
-
-        {/* Expand */}
-        <button onClick={() => setOpen((o) => !o)} className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-indigo-600 hover:text-indigo-700">
-          {open ? "Hide the details" : "Why we ranked it here"}
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className={`transition-transform ${open ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
-        </button>
-      </div>
-
-      {open && (
-        <div className="border-t hairline bg-slate-50/40 p-5 sm:p-6 grid md:grid-cols-2 gap-6 rise-in">
+        {open && (
+          <div className="border-t hairline bg-slate-50/40 p-5 sm:p-6 grid md:grid-cols-2 gap-6 rise-in">
           <div className="space-y-4">
             {p.pros.length > 0 && (
               <div>
@@ -562,6 +579,7 @@ function OpportunityCard({ p, rank }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -575,9 +593,27 @@ function rankBadge(rank) {
 
 function KeyNum({ label, value, strong }) {
   return (
-    <div>
-      <div className={`tabular-nums ${strong ? "text-emerald-600 font-bold" : "text-slate-800 font-semibold"}`}>{value}</div>
+    <div className="min-w-0">
+      <div className={`text-[15px] tabular-nums ${strong ? "text-emerald-600 font-extrabold" : "text-slate-800 font-bold"}`}>{value}</div>
       <div className="text-[11px] text-slate-400">{label}</div>
     </div>
+  );
+}
+
+function Sep() {
+  return <div className="w-px h-8 bg-slate-200 mx-4 sm:mx-5 hidden sm:block" />;
+}
+
+const PILL_TONE = {
+  slate: "bg-white text-slate-600 border-slate-200",
+  emerald: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  brand: "bg-indigo-50 text-indigo-700 border-indigo-200",
+};
+function StatPill({ icon, label, tone = "slate" }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium ${PILL_TONE[tone]}`}>
+      <span className="text-[13px]">{icon}</span>
+      {label}
+    </span>
   );
 }
