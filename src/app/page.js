@@ -6,13 +6,69 @@ import { CATEGORIES, MARKETS, PRICE_CAPS } from "@/lib/mockData";
 
 const COUNTS = [3, 5, 8];
 const STEPS = [
-  { t: "Discovering trending products", d: "Scanning Google Trends, Amazon, TikTok & AliExpress" },
-  { t: "Measuring real demand", d: "Is interest growing or fading?" },
-  { t: "Sizing up the competition", d: "How many sellers, how crowded, how pricey the ads" },
-  { t: "Reading customer reviews", d: "What buyers love and complain about" },
-  { t: "Working out your profit margins", d: "What you'd keep after supplier costs" },
-  { t: "Ranking your best opportunities", d: "Scoring every product against what matters" },
+  {
+    t: "Discovering trending products",
+    icon: "🛰️",
+    ms: 2400,
+    details: [
+      "Scanning Google Trends breakouts…",
+      "Pulling Amazon best-sellers & movers…",
+      "Checking TikTok rising ad products…",
+      "Crawling AliExpress hot list…",
+    ],
+  },
+  {
+    t: "Measuring real demand",
+    icon: "📈",
+    ms: 2200,
+    details: [
+      "Plotting 12-month interest curves…",
+      "Estimating monthly search volume…",
+      "Telling rising trends from fading ones…",
+    ],
+  },
+  {
+    t: "Sizing up the competition",
+    icon: "⚔️",
+    ms: 2200,
+    details: [
+      "Counting active sellers per niche…",
+      "Measuring how saturated the ads are…",
+      "Checking how buyers rate the incumbents…",
+    ],
+  },
+  {
+    t: "Reading customer reviews",
+    icon: "💬",
+    ms: 2600,
+    details: [
+      "Reading thousands of real reviews…",
+      "Clustering the common complaints…",
+      "Separating fixable gripes from quality issues…",
+    ],
+  },
+  {
+    t: "Working out your profit margins",
+    icon: "💰",
+    ms: 2000,
+    details: [
+      "Comparing supplier costs…",
+      "Calculating what you'd keep per sale…",
+      "Estimating the ad break-even point…",
+    ],
+  },
+  {
+    t: "Ranking your best opportunities",
+    icon: "🎯",
+    ms: 2000,
+    details: [
+      "Scoring each product on what matters…",
+      "Weighing demand against risk…",
+      "Sorting your shortlist…",
+    ],
+  },
 ];
+const SCAN_SOURCES = ["Google Trends", "Amazon", "TikTok", "AliExpress", "Competitor stores"];
 
 export default function Home() {
   const [step, setStep] = useState("setup"); // setup | analyzing | results
@@ -21,11 +77,13 @@ export default function Home() {
   const [market, setMarket] = useState("PK");
   const [maxPrice, setMaxPrice] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
+  const [detailIdx, setDetailIdx] = useState(0);
   const [data, setData] = useState(null);
 
   const startSearch = async () => {
     setStep("analyzing");
     setStepIdx(0);
+    setDetailIdx(0);
     setData(null);
     try {
       const res = await fetch("/api/research", {
@@ -39,17 +97,28 @@ export default function Home() {
     }
   };
 
-  // drive the analysing animation
+  // advance through the steps, each taking its own (deliberate) amount of time
   useEffect(() => {
-    if (step !== "analyzing") return;
-    if (stepIdx >= STEPS.length) return;
-    const t = setTimeout(() => setStepIdx((i) => i + 1), stepIdx === 0 ? 500 : 620);
+    if (step !== "analyzing" || stepIdx >= STEPS.length) return;
+    const t = setTimeout(() => {
+      setStepIdx((i) => i + 1);
+      setDetailIdx(0);
+    }, STEPS[stepIdx].ms);
     return () => clearTimeout(t);
   }, [step, stepIdx]);
 
+  // cycle the little "thinking" detail line inside the active step
+  useEffect(() => {
+    if (step !== "analyzing" || stepIdx >= STEPS.length) return;
+    const details = STEPS[stepIdx].details;
+    const t = setInterval(() => setDetailIdx((d) => (d + 1) % details.length), 780);
+    return () => clearInterval(t);
+  }, [step, stepIdx]);
+
+  // only move on once BOTH the animation has played out AND the data is ready
   useEffect(() => {
     if (step === "analyzing" && data && stepIdx >= STEPS.length) {
-      const t = setTimeout(() => setStep("results"), 350);
+      const t = setTimeout(() => setStep("results"), 600);
       return () => clearTimeout(t);
     }
   }, [step, data, stepIdx]);
@@ -62,7 +131,7 @@ export default function Home() {
           onStart={startSearch}
         />
       )}
-      {step === "analyzing" && <Analyzing stepIdx={stepIdx} market={market} selected={selected} />}
+      {step === "analyzing" && <Analyzing stepIdx={stepIdx} detailIdx={detailIdx} market={market} selected={selected} count={count} />}
       {step === "results" && data && <Results data={data} onReset={() => setStep("setup")} onRefine={() => setStep("setup")} />}
     </div>
   );
@@ -186,7 +255,7 @@ function Setup({ selected, setSelected, count, setCount, market, setMarket, maxP
             Research products
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </button>
-          <span className="text-[13px] text-slate-400">Takes about 10 seconds · nothing to install</span>
+          <span className="text-[13px] text-slate-400">Takes a few moments · nothing to install</span>
         </div>
       </div>
     </div>
@@ -210,44 +279,86 @@ function Divider() {
 }
 
 /* -------------------------------------------------------------- Analyzing */
-function Analyzing({ stepIdx, market, selected }) {
+function Analyzing({ stepIdx, detailIdx, market, selected, count }) {
   const marketLabel = MARKETS.find((m) => m.id === market)?.label || "your market";
+  const clamped = Math.min(stepIdx, STEPS.length - 1);
+  const current = STEPS[clamped];
+  const detail = stepIdx >= STEPS.length ? "Putting your shortlist together…" : current.details[detailIdx % current.details.length];
+  const pct = Math.min(100, Math.round((stepIdx / STEPS.length) * 100));
+  const barMs = stepIdx >= STEPS.length ? 400 : current.ms;
+  const catLabel = selected.length ? `${selected.length} categor${selected.length > 1 ? "ies" : "y"}` : "all categories";
+
   return (
-    <div className="max-w-xl mx-auto rise-in">
-      <div className="text-center mb-8">
-        <div className="relative mx-auto w-16 h-16 mb-5">
-          <div className="absolute inset-0 rounded-2xl brand-gradient opacity-20 blur-lg" />
-          <div className="relative w-16 h-16 rounded-2xl brand-gradient grid place-items-center">
-            <svg className="animate-spin" width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="9" stroke="white" strokeOpacity="0.35" strokeWidth="3" />
-              <path d="M21 12a9 9 0 0 0-9-9" stroke="white" strokeWidth="3" strokeLinecap="round" />
-            </svg>
+    <div className="max-w-2xl mx-auto rise-in">
+      {/* Radar */}
+      <div className="flex flex-col items-center text-center mb-8">
+        <div className="relative w-28 h-28 mb-6 grid place-items-center">
+          <span className="absolute inset-0 rounded-full bg-indigo-400/20 ping-ring" />
+          <span className="absolute inset-0 rounded-full bg-indigo-400/10 ping-ring" style={{ animationDelay: "1.3s" }} />
+          <div className="relative w-20 h-20 rounded-full brand-gradient grid place-items-center shadow-lg shadow-indigo-500/30 overflow-hidden float-y">
+            <div className="absolute inset-0 radar-sweep" style={{ background: "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.45) 40deg, transparent 80deg)" }} />
+            <span className="relative text-3xl">{stepIdx >= STEPS.length ? "🎯" : current.icon}</span>
           </div>
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Researching the market for you</h2>
-        <p className="text-slate-500 text-sm mt-1.5">
-          Analyzing {selected.length ? `${selected.length} categor${selected.length > 1 ? "ies" : "y"}` : "all categories"} for {marketLabel}
+        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Researching the market for you</h2>
+        <p className="text-slate-500 text-sm mt-2">
+          Looking at {catLabel} · {count} ideas · {marketLabel}
         </p>
       </div>
 
+      {/* Progress bar */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between text-[12px] mb-2">
+          <span key={detail} className="text-slate-600 font-medium fade-swap">{detail}</span>
+          <span className="text-slate-400 tabular-nums">{pct}%</span>
+        </div>
+        <div className="relative h-2 rounded-full bg-slate-100 overflow-hidden">
+          <div
+            className="relative h-full rounded-full brand-gradient sheen"
+            style={{ width: `${Math.min(100, ((stepIdx + 0.85) / STEPS.length) * 100)}%`, transition: `width ${barMs}ms linear` }}
+          />
+        </div>
+      </div>
+
+      {/* Steps */}
       <div className="card p-2">
         {STEPS.map((s, i) => {
           const done = i < stepIdx;
           const active = i === stepIdx;
           return (
-            <div key={i} className={`flex items-center gap-3.5 rounded-xl px-4 py-3 transition ${active ? "bg-indigo-50/60" : ""}`}>
-              <span className={`grid place-items-center w-7 h-7 rounded-full text-[12px] font-bold shrink-0 transition ${
-                done ? "bg-emerald-500 text-white" : active ? "brand-gradient text-white" : "bg-slate-100 text-slate-400"
+            <div key={i} className={`flex items-center gap-3.5 rounded-xl px-4 py-3 transition ${active ? "bg-indigo-50" : ""}`}>
+              <span className={`grid place-items-center w-8 h-8 rounded-full text-sm shrink-0 transition ${
+                done ? "bg-emerald-500 text-white" : active ? "brand-gradient text-white shadow-md shadow-indigo-500/25" : "bg-slate-100 text-slate-300"
               }`}>
-                {done ? "✓" : active ? <Dot /> : i + 1}
+                {done ? <Check /> : active ? <span className="text-[15px]">{s.icon}</span> : <span className="text-[12px] font-bold">{i + 1}</span>}
               </span>
-              <div className="min-w-0">
-                <div className={`text-sm font-medium ${done || active ? "text-slate-800" : "text-slate-400"}`}>{s.t}</div>
-                <div className="text-[12px] text-slate-400 truncate">{s.d}</div>
+              <div className="min-w-0 flex-1">
+                <div className={`text-sm font-semibold ${done || active ? "text-slate-800" : "text-slate-400"}`}>{s.t}</div>
+                {active && <div key={detailIdx} className="text-[12px] text-indigo-500 truncate fade-swap">{detail}</div>}
               </div>
-              {active && <span className="ml-auto text-[12px] text-indigo-500 font-medium">Working…</span>}
-              {done && <span className="ml-auto text-emerald-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5" /></svg></span>}
+              {active && (
+                <span className="ml-auto inline-flex items-center gap-1.5 text-[12px] text-indigo-500 font-medium">
+                  <Dot /> Working
+                </span>
+              )}
+              {done && <span className="ml-auto text-[11px] text-emerald-500 font-semibold">Done</span>}
             </div>
+          );
+        })}
+      </div>
+
+      {/* Sources lighting up */}
+      <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+        <span className="text-[12px] text-slate-400 mr-1">Checking:</span>
+        {SCAN_SOURCES.map((src, i) => {
+          const on = stepIdx > i * (STEPS.length / SCAN_SOURCES.length) - 1;
+          return (
+            <span key={src} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium border transition ${
+              on ? "border-indigo-200 bg-indigo-50 text-indigo-600" : "border-slate-200 bg-white text-slate-300"
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${on ? "bg-indigo-500 pulse-dot" : "bg-slate-200"}`} />
+              {src}
+            </span>
           );
         })}
       </div>
@@ -255,7 +366,10 @@ function Analyzing({ stepIdx, market, selected }) {
   );
 }
 function Dot() {
-  return <span className="w-2 h-2 rounded-full bg-white pulse-dot" />;
+  return <span className="w-2 h-2 rounded-full bg-current pulse-dot" />;
+}
+function Check() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M20 6 9 17l-5-5" /></svg>;
 }
 
 /* ---------------------------------------------------------------- Results */
@@ -298,11 +412,15 @@ function Results({ data, onReset }) {
 
       {/* Best pick highlight */}
       {summary.best && (
-        <div className="card p-4 mb-6 flex items-center gap-3 border-l-4 border-l-emerald-400">
-          <span className="text-2xl">🏆</span>
-          <div className="text-sm">
-            <span className="font-semibold text-slate-900">Top pick: {summary.best.name}</span>
-            <span className="text-slate-500"> — our highest-scoring opportunity in this search. Start here.</span>
+        <div className="relative overflow-hidden rounded-2xl brand-gradient p-5 mb-6 text-white shadow-lg shadow-indigo-500/20">
+          <div className="absolute -right-6 -top-8 text-[120px] opacity-15 select-none rotate-12">🏆</div>
+          <div className="relative flex items-center gap-4">
+            <div className="grid place-items-center w-12 h-12 rounded-xl bg-white/15 text-2xl shrink-0">{summary.best.image}</div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Top pick this search</div>
+              <div className="font-bold text-lg leading-tight truncate">{summary.best.name}</div>
+              <div className="text-[13px] text-white/80 mt-0.5">Our highest-scoring opportunity — the best place to start testing.</div>
+            </div>
           </div>
         </div>
       )}
@@ -334,7 +452,7 @@ function OpportunityCard({ p, rank }) {
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="relative">
               <div className="grid place-items-center w-12 h-12 rounded-xl bg-slate-50 border hairline text-2xl">{p.image}</div>
-              <span className="absolute -top-2 -left-2 grid place-items-center w-6 h-6 rounded-full bg-slate-900 text-white text-[11px] font-bold shadow">{rank}</span>
+              <span className={`absolute -top-2 -left-2 grid place-items-center w-6 h-6 rounded-full text-[11px] font-bold shadow ring-2 ring-white ${rankBadge(rank)}`}>{rank}</span>
             </div>
             <div className="min-w-0">
               <h3 className="font-bold text-slate-900 leading-snug truncate">{p.name}</h3>
@@ -446,6 +564,13 @@ function OpportunityCard({ p, rank }) {
       )}
     </div>
   );
+}
+
+function rankBadge(rank) {
+  if (rank === 1) return "bg-gradient-to-br from-amber-400 to-yellow-500 text-white";
+  if (rank === 2) return "bg-gradient-to-br from-slate-300 to-slate-400 text-white";
+  if (rank === 3) return "bg-gradient-to-br from-orange-400 to-amber-600 text-white";
+  return "bg-slate-900 text-white";
 }
 
 function KeyNum({ label, value, strong }) {
